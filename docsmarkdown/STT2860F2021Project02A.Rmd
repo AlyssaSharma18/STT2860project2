@@ -1,6 +1,6 @@
 ---
 title: "Project 2A: Galton Data"
-author: "PUT YOUR NAME HERE"
+author: "Alyssa Sharma"
 date: '`r format(Sys.time(), "%A, %B %d, %Y @ %I:%M %p")`'
 output: 
   html_document: 
@@ -22,23 +22,32 @@ knitr::opts_chunk$set(
 
 ### Packages Used
 
-```{r loadpackages}
+Load all packages used in this project.
 
+```{r loadpackages}
+library(tidyverse)
+library(knitr) # kable() function
+library(kableExtra) # for styling
+library(DT)
 ```
 
 ### Datasets Used
 
 ```{r loaddatamain}
+data_main <- read_csv("https://raw.githubusercontent.com/STAT-JET-ASU/Datasets/master/Instructor/galtonfamiliesmain.csv")
 
+glimpse(data_main)
 ```
 
 ```{r loaddatasub}
+data_sub <- read_csv("https://raw.githubusercontent.com/STAT-JET-ASU/Datasets/master/Instructor/galtonfamiliessub.csv")
 
+glimpse(data_sub)
 ```
 
 ### Collaborators
 
-ADD NAMES HERE OR WRITE "None"
+"None"
 
 <hr>
 
@@ -69,7 +78,96 @@ Load the `galtonfamiliesmain.csv` and `galtonfamiliessub.csv` datasets above und
    * in order of height within each sex of child
 
 ```{r assembledata1}
+data_ntbk <- read_csv("https://raw.githubusercontent.com/STAT-JET-ASU/Datasets/master/Instructor/galtonfamiliesnotebook.csv")
 
+glimpse(data_ntbk)
+
+data_sub1 <- data_sub %>%
+  mutate(
+    Father = FatherR + 60,
+    Mother = MotherR + 60,
+    Height = HeightR + 60
+  ) %>%
+  select(FamilyID, Children, Father, Mother, Child, Height)
+
+#head(data_sub1)
+
+data_sub2 <- data_sub %>%
+  mutate(
+    Father = FatherR + 60,
+    Mother = MotherR + 60,
+    Height = HeightR + 60
+  ) %>%
+  select(names(data_main)) # column names from main dataset
+
+#head(data_sub2)
+
+data_sub3 <- data_sub %>%
+  transmute(FamilyID,
+    Children,
+    Father = FatherR + 60,
+    Mother = MotherR + 60,
+    Child,
+    Height = HeightR + 60
+  )
+
+#head(data_sub3)
+
+data_fams1 <- data_sub1 %>%
+  mutate(FamilyID = as.character(FamilyID)) %>%
+  bind_rows(data_main) %>%
+  left_join(data_ntbk, by = "FamilyID") %>%
+  select(FamilyID, Page, Children, Father, Mother, Child, Height)
+
+#head(data_fams1)
+
+data_fams2 <- data_sub1 %>%
+  mutate(FamilyID = as.character(FamilyID)) %>%
+  bind_rows(data_main) %>%
+  left_join(data_ntbk, by = "FamilyID") %>%
+  relocate(Page, .after = FamilyID)
+
+#head(data_fams2)
+
+data_fams3 <- data_ntbk %>%
+  right_join(bind_rows(data_main, mutate(data_sub1, FamilyID = as.character(FamilyID))))
+
+#head(data_fams3)
+
+data_fams_ordered1 <- data_fams1 %>%
+  mutate(FamilyID = as.numeric(ifelse(FamilyID == "136A", 205, FamilyID))) %>%
+  arrange(FamilyID, desc(Child), desc(Height))
+
+#head(data_fams_ordered1)
+
+data_fams_ordered2 <- data_fams1 %>%
+  mutate(
+    FamilyID = replace(FamilyID, FamilyID == "136A", 205),
+    FamilyID = as.numeric(FamilyID)
+  ) %>%
+  arrange(FamilyID, desc(Child), desc(Height))
+
+#head(data_fams_ordered2)
+
+data_fams_ordered3 <- data_fams1 %>%
+  mutate(FamilyID = as.numeric(replace(FamilyID, FamilyID == "136A", 205))) %>%
+  arrange(FamilyID, desc(Child), desc(Height))
+
+#head(data_fams_ordered3)
+
+data_fams_mutated <- data_fams1 %>%
+  mutate(
+    Midparent = (1.08 * Mother + Father) / 2,
+    HeightT = ifelse(Child == "Daughter", 1.08 * Height, Height)
+  )
+
+#head(data_fams_mutated)
+
+datafamsmutated <- data_fams_mutated %>%
+   rename(familyid = FamilyID, num_children = Children, father_ht = Father, mother_ht = Mother, midparent = Midparent, child_sex = Child, child_ht = Height) %>%
+  arrange(familyid,desc(child_sex),child_ht)
+
+datatable(datafamsmutated)   
 ```
 
 #### Dataset #2
@@ -77,7 +175,11 @@ Load the `galtonfamiliesmain.csv` and `galtonfamiliessub.csv` datasets above und
 Select the variables `familyid` and `num_children` and reduce the dataset so that it contains only one row per family. Again, use `datatable()` from the DT package to display the result.
 
 ```{r assembledata2}
+dataset2 <- datafamsmutated %>%
+  select(familyid,num_children) %>%
+  distinct(familyid)
 
+datatable(dataset2)
 ```
 
 ### Part 1: Parent/Child Heights
@@ -107,7 +209,7 @@ Also include the following.
 * use `theme()` to move the legend to the bottom of the scatterplot
 
 ```{r updatedscatterplot1}
-
+ggplot(data = datafamsmutated, aes(x = child_ht, y = midparent, color = child_sex)) + geom_point() + scale_color_manual(values = c("green","blue")) + coord_fixed()  + labs(title = "Midparent vs Child Heights", xlab = "Child Heights", ylab = "Midparent", color = "gender of child") + theme_linedraw() + theme(legend.position = "bottom")
 ```
 
 #### Updated Scatterplot #2
@@ -115,7 +217,7 @@ Also include the following.
 Remove the color coding for sons versus daughters from your plot, as well as any other coding related to it. Instead, choose n single color for the points and adjust both `size` and transparency (`alpha`) as needed to correct for overplotting and help show the density of points. Reset the `aes` so child height is the `y` variable and midparent height is the `x` variable. Add a fitted *straight* line to the plot. Update your `labs` accordingly.
 
 ```{r updatedscatterplot2}
-
+ggplot(data = datafamsmutated, aes(y = child_ht, x = midparent)) + geom_point(alpha = .5, size = 2, color = "purple")  + coord_fixed()  + labs(title = "Midparent vs Child Heights", xlab = "Midparent", ylab = "Child Heights") + theme_linedraw() + theme(legend.position = "bottom") + geom_hline(yintercept = 60)
 ```
 
 ### Part 2: Number of Children
@@ -123,6 +225,7 @@ Remove the color coding for sons versus daughters from your plot, as well as any
 Create a barplot to show the distribution of the number of children per family. Set the bars to something other than the default `width`. Scale the x-axis so that there is a tick mark for each bar. Choose appropriate colors, labels, themes, and/or and other types of formatting that you feel will enhance the meaning or visual appearance of the plot.
 
 ```{r childrenbarplot}
+ggplot(data = datafamsmutated, aes(y = num_children)) + geom_bar(bar = 'length') + scale_y_continuous(breaks = 0:15) + theme_bw() + labs(title = "Children Per Family", x = "Count", y = "Number of Children")
 
 ```
 
@@ -132,19 +235,20 @@ Create a barplot to show the distribution of the number of children per family. 
 
 **ANSWER**
 
-ERASE THIS TEXT AND ANSWER QUESTION HERE
+I think they are. They're easier for the human eye to visualize, I'm not entirely sure what's going on when I look at his plot. It would be terribly innacurate to try and draw a detailed scatterplot by hand though. To enhance the clarity of my plots, I like using pre-made themes that make them a bit easier on the eye.
+
 
 **Question 2:** Explain the rationale behind the choices you made when creating your scatterplots and barplot, such as size, color, transparency, or other features. What motivated your decisions? 
 
 **ANSWER**
 
-ERASE THIS TEXT AND ANSWER QUESTION HERE
+I decided to use green and blue for my points on the scatter plot because someone with red/green colorblindness would be able to differentiate the points. I decided to go with purple on the scatterplot without a legend because the color doesn't need to be differentiated, and it is the same as using all black. I like using the black white theme for plots to make it easier to understand.
 
 **Question 3:** Considering best practices, how does using `coord_fixed()` enhance the authenticity of the information shown in the scatterplots, such as the relationship and spread of the data?
 
 **ANSWER**
 
-ERASE THIS TEXT AND ANSWER QUESTION HERE
+I think that using coord_fixed makes the axis easier to read, and that this can help enhance user experience, and make people see relationships in the spread of the data when otherwise it would have been diffucult to understand.
 
 ***
 ```{r}
