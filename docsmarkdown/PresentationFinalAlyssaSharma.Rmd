@@ -1,0 +1,66 @@
+---
+title: "PresentationFinal2860"
+author: "Alyssa Sharma"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: cerulean
+    highlight: espresso
+    toc: true
+    toc_float: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+library(xlsxjars)
+library(readxl)
+```
+
+## Visualization of Billionares 2021
+```{r}
+setwd("~/STT2860project2/dataraw")
+billion <- read_csv(file = "billionaires_2021_10_31.csv")
+#str(billion)
+```
+
+Now that we have loaded the data we will make a plot. I chose to make a bar plot which displays the top 10 Richest Men in the World according to the dataset.
+```{r }
+top10 <- billion %>%
+  filter(Rank <= 10) %>%
+  arrange(Total_Net_Worth_Bil)
+ggplot(data = top10, aes(x = Name, y = Total_Net_Worth_Bil)) + geom_col() + coord_flip() + labs(title = "The Top 10 Richest Men in the World")
+```
+This visualization tells us who the 10 richest men in the world are, as well as how much money they have in Billions.
+
+## Independent Visualization
+
+I've always noticed that the water tastes different here in Boone, so I was wondering why that may be. I got some water quality data for Boone from the Environmental Working Group's website, and was suprised to find that Appalachian State University WTP is actual who conducts the water quality tests in Boone. A lot of chemicals which are at legal levels, but not necessarily safe ones. I decided to take a look at the spread of Bromodichloromethane levels from 2014 to 2019, the chemical which is found the most in Boone water, using a scatterplot.
+
+```{r}
+setwd("~/STT2860project2/dataraw")
+Bromo <- read_xlsx(path = "Bromodichloromethane in Boone.xlsx")
+
+
+Bromo <- Bromo %>%
+  mutate(Result = str_remove(Result, " ppb"))
+
+Bromo$Result <- as.numeric(Bromo$Result)
+
+ggplot(data = Bromo, aes(x = Date, y = Result)) + geom_point() + geom_smooth() + labs(title = "Bromodichloromethane levels from 2014 to 2019 in Boone NC", xlab = "Date", ylab = "Level in Parts Per Billion")
+
+```
+There doesn't seem to be that much of a trend to the data, but there is a lot of oscillation. 
+
+
+Data retrieved from: https://www.ewg.org/tapwater/system-contaminant.php?pws=NC0195101&contamcode=2943
+
+
+
+```{r}
+sessionInfo()
+```
